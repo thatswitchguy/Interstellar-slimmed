@@ -1,0 +1,32 @@
+modules = ["nodejs-20", "python-3.11"]
+run = ["cargo run"]
+
+[agent]
+expertMode = true
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "sequential"
+author = 58245413
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd src && python3 -m http.server 5000"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[nix]
+packages = ["cargo", "lsof", "rustup"]

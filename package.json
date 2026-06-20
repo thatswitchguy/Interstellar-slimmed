@@ -1,0 +1,12 @@
+{
+  "name": "interstellar-browser",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dns": "cd dns-server && cargo run"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
