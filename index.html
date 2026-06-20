@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Classroom</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body id="body">
+
+<div id="app">
+
+    <aside id="sidebar">
+
+        <div id="logoContainer">
+            <h1 id="logoText">Interstellar Slimmed</h1>
+        </div>
+
+        <div id="sidebarButtons">
+
+            <button id="newTabBtn">
+                New Tab
+            </button>
+
+            <button id="bookmarksBtn">
+                Bookmarks
+            </button>
+
+            <button id="historyBtn">
+                History
+            </button>
+
+        </div>
+
+        <div id="bookmarksPanel"></div>
+
+        <div id="historyPanel"></div>
+
+    </aside>
+
+    <main id="main">
+
+        <div id="tabsContainer">
+            <div id="tabs"></div>
+        </div>
+
+        <div id="toolbar">
+
+            <button id="backBtn">←</button>
+
+            <button id="forwardBtn">→</button>
+
+            <button id="reloadBtn">↻</button>
+
+            <input
+                id="urlBar"
+                type="text"
+                placeholder="Search Google or enter URL"
+                autocomplete="off"
+            >
+
+            <button id="goBtn">
+                Go
+            </button>
+
+        </div>
+
+        <div id="browserContainer">
+            <div id="tabViews"></div>
+        </div>
+
+        <div id="statusBar">
+
+            <span id="statusText">
+                Ready
+            </span>
+
+        </div>
+        <div id="dnsContainer">
+
+            <span id="dnsLabel">
+                DNS:
+            </span>
+
+            <span id="dnsValue">
+                Waiting...
+            </span>
+
+        </div>
+
+    </main>
+
+</div>
+
+<script type="module" src="renderer.js"></script>
+
+</body>
+</html>
