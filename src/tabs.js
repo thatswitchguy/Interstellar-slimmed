@@ -2,7 +2,7 @@ export const tabs = [];
 
 export let activeTab = null;
 
-export function createTab(url = "about:blank") {
+export function createTab(url = "blackscreen.app") {
 
     const id =
         "tab-" +

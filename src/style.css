@@ -10,7 +10,7 @@
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    font-family: Inter, Arial, sans-serif;
+    font-family: apple-ui, Inter, Arial, sans-serif;
     background: #0f1117;
     color: white;
 }

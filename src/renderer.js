@@ -30,16 +30,14 @@ const goBtn =
 const newTabBtn =
     document.getElementById("newTabBtn");
 
-const dnsValue =
-    document.getElementById("dnsValue");
-
-const statusText =
-    document.getElementById("statusText");
-
 // ---------------- HELPERS ----------------
 
 function parseInput(input) {
     input = input.trim();
+
+    if (input === "home.html") {
+        return "home.html";
+    }
 
     if (
         input.startsWith("http://") ||
@@ -48,14 +46,19 @@ function parseInput(input) {
         return input;
     }
 
-    if (input.includes(".")) {
-        return "https://" + input;
+    return "https://" + input;
+}
+
+function getIframeSrc(url) {
+    if (
+        url === "home.html" ||
+        url.startsWith("/") ||
+        url.startsWith("./")
+    ) {
+        return url;
     }
 
-    return (
-        "https://www.google.com/search?q=" +
-        encodeURIComponent(input)
-    );
+    return "/proxy?url=" + encodeURIComponent(url);
 }
 
 function getCurrentTab() {
@@ -134,7 +137,6 @@ function switchTab(id) {
     tabs.forEach(tab => {
         if (!tab.iframe) return;
 
-        // FIX: use hidden instead of display:none
         tab.iframe.hidden = tab.id !== id;
     });
 
@@ -143,17 +145,8 @@ function switchTab(id) {
 
     if (current) {
         urlBar.value = current.url || "";
-
-        if (
-            current.dns &&
-            current.dns.ipv4
-        ) {
-            dnsValue.textContent =
-                current.dns.ipv4[0];
-        }
     }
 
-    // auto focus iframe after switching
     setTimeout(() => {
         const t = getActiveTab();
         if (t?.iframe) {
@@ -162,29 +155,6 @@ function switchTab(id) {
     }, 50);
 
     renderTabs();
-}
-
-// ---------------- DNS ----------------
-
-async function updateDNS(tab) {
-    try {
-        if (!tab.url) return;
-
-        const host =
-            new URL(tab.url).hostname;
-
-        const dns =
-            await lookupDNS(host);
-
-        tab.dns = dns;
-
-        dnsValue.textContent =
-            dns.ipv4?.[0] || "No IPv4";
-
-        saveTabs();
-    } catch {
-        dnsValue.textContent = "DNS Failed";
-    }
 }
 
 // ---------------- NAVIGATE ----------------
@@ -197,15 +167,14 @@ async function navigate() {
 
     current.url = url;
 
+    const iframeSrc = getIframeSrc(url);
+
     if (!current.iframe) {
         const iframe =
             document.createElement("iframe");
 
         iframe.className = "browser-frame";
-
-        // FIX: must be focusable
         iframe.tabIndex = 0;
-
         iframe.hidden = false;
 
         current.iframe = iframe;
@@ -213,7 +182,7 @@ async function navigate() {
         tabViews.appendChild(iframe);
     }
 
-    current.iframe.src = url;
+    current.iframe.src = iframeSrc;
     current.iframe.hidden = false;
 
     tabs.forEach(tab => {
@@ -225,20 +194,20 @@ async function navigate() {
         }
     });
 
-    try {
-        current.title =
-            new URL(url).hostname;
-    } catch {
-        current.title = "Search";
+    if (url === "home.html") {
+        current.title = "New Tab";
+    } else {
+        try {
+            current.title =
+                new URL(url).hostname;
+        } catch {
+            current.title = url;
+        }
     }
 
-    addHistory(url, current.title);
-
-    statusText.textContent = "Loading...";
-
-    await updateDNS(current);
-
-    statusText.textContent = "Ready";
+    if (url !== "home.html") {
+        addHistory(url, current.title);
+    }
 
     renderTabs();
     saveTabs();
@@ -247,16 +216,14 @@ async function navigate() {
 // ---------------- CREATE TAB ----------------
 
 function createNewTab() {
-    const tab = createTab();
+    const tab = createTab("home.html");
 
     const iframe =
         document.createElement("iframe");
 
     iframe.className = "browser-frame";
-
-    iframe.hidden = true;
-
-    // IMPORTANT FIX
+    iframe.src = "home.html";
+    iframe.hidden = false;
     iframe.tabIndex = 0;
 
     tab.iframe = iframe;
@@ -288,11 +255,8 @@ function restoreSession() {
             document.createElement("iframe");
 
         iframe.className = "browser-frame";
-        iframe.src = saved.url;
-
+        iframe.src = getIframeSrc(saved.url);
         iframe.hidden = true;
-
-        // IMPORTANT FIX
         iframe.tabIndex = 0;
 
         tab.iframe = iframe;
@@ -301,6 +265,12 @@ function restoreSession() {
     });
 
     switchTab(tabs[0].id);
+
+    const first = tabs[0];
+    if (first && first.iframe) {
+        first.iframe.hidden = false;
+    }
+
     renderTabs();
 }
 
@@ -318,9 +288,21 @@ newTabBtn.addEventListener("click", createNewTab);
 
 document.addEventListener("DOMContentLoaded", restoreSession);
 
-// ---------------- TAB KEY FOCUS FIX ----------------
+// ---------------- KEY SHORTCUTS ----------------
 
 document.addEventListener("keydown", (e) => {
+    if (
+        e.key === "z" &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.metaKey &&
+        document.activeElement !== urlBar
+    ) {
+        window.location.href =
+            "https://classroom.google.com";
+        return;
+    }
+
     if (e.key === "Tab") {
         e.preventDefault();
 
