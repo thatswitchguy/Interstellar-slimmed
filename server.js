@@ -85,7 +85,47 @@ app.get("/proxy", async (req, res) => {
     res.send(Buffer.from(buffer));
 
   } catch (err) {
-    res.status(500).send("Proxy error: " + err.message);
+    const errPage = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Can't connect</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 100vw; height: 100vh;
+      background: #0f1117; color: white;
+      font-family: -apple-system, Inter, Arial, sans-serif;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 18px;
+    }
+    h2 { font-size: 22px; font-weight: 700; color: #e2e8f0; }
+    p  { font-size: 14px; color: #64748b; max-width: 420px; text-align: center; }
+    a  {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 11px 22px;
+      background: #3b82f6;
+      color: white;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    a:hover { background: #2563eb; }
+    code { font-size: 12px; color: #475569; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <h2>This site refused to connect</h2>
+  <p>The proxy couldn't reach <strong>${url}</strong>.<br>
+     It may be down, blocking automated requests, or require a direct connection.</p>
+  <a href="${url}" target="_blank" rel="noopener">Open in new tab ↗</a>
+  <code>${err.message}</code>
+</body>
+</html>`;
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(errPage);
   }
 });
 

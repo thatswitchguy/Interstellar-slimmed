@@ -5,7 +5,7 @@ run = ["cargo run"]
 expertMode = true
 
 [workflows]
-runButton = "Project"
+runButton = "Start application"
 
 [[workflows.workflow]]
 name = "Project"
@@ -31,10 +31,6 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
-
-[[ports]]
-localPort = 3000
-externalPort = 80
 
 [[ports]]
 localPort = 5000
