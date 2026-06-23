@@ -63,6 +63,40 @@ function applyHomeTab(iframe) {
     iframe.srcdoc = HOME_SRCDOC;
 }
 
+function errorPageSrcdoc(url, reason) {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Can't connect</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 100vw; height: 100vh;
+      background: #0f1117; color: white;
+      font-family: -apple-system, Inter, Arial, sans-serif;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 18px;
+    }
+    h2 { font-size: 22px; font-weight: 700; color: #e2e8f0; }
+    p  { font-size: 14px; color: #64748b; max-width: 420px; text-align: center; }
+    a  {
+      display: inline-block; margin-top: 6px; padding: 11px 22px;
+      background: #3b82f6; color: white; border-radius: 10px;
+      text-decoration: none; font-size: 14px; font-weight: 600;
+    }
+    a:hover { background: #2563eb; }
+    code { font-size: 12px; color: #475569; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <h2>Can't reach this site</h2>
+  <p>DNS lookup failed for <strong>${url}</strong>.<br>${reason}</p>
+  <a href="${url}" target="_blank" rel="noopener">Open in new tab ↗</a>
+</body>
+</html>`;
+}
+
 // ---------------- HELPERS ----------------
 
 function parseInput(input) {
@@ -82,18 +116,6 @@ function parseInput(input) {
     return "https://" + input;
 }
 
-function getIframeSrc(url) {
-    if (
-        url === "home.html" ||
-        url.startsWith("/") ||
-        url.startsWith("./")
-    ) {
-        return url;
-    }
-
-    return "/proxy?url=" + encodeURIComponent(url);
-}
-
 function getCurrentTab() {
     const active =
         localStorage.getItem("activeTab");
@@ -108,6 +130,56 @@ function getActiveTab() {
     return tabs.find(tab => tab.id === active);
 }
 
+// ---------------- FALLBACK CHAIN ----------------
+// Step 1: direct iframe load
+// Step 2 (on error): DNS lookup
+// Step 3a: DNS ok  → window.open in new tab
+// Step 3b: DNS fail → show error srcdoc
+
+function attachFallback(iframe, url) {
+    // Clear any previous error handler
+    iframe.onerror = null;
+
+    iframe.onerror = async () => {
+        // Prevent double-firing
+        iframe.onerror = null;
+
+        let hostname;
+        try {
+            hostname = new URL(url).hostname;
+        } catch {
+            iframe.removeAttribute("src");
+            iframe.srcdoc = errorPageSrcdoc(url, "Invalid URL.");
+            return;
+        }
+
+        try {
+            const dns = await lookupDNS(hostname);
+
+            const resolved =
+                dns.addresses && dns.addresses.length > 0;
+
+            if (resolved) {
+                // Site exists but iframe was blocked — open in new tab
+                window.open(url, "_blank", "noopener");
+            } else {
+                // DNS failed — show error page
+                iframe.removeAttribute("src");
+                iframe.srcdoc = errorPageSrcdoc(
+                    url,
+                    "The domain could not be resolved. The site may be down or misspelled."
+                );
+            }
+        } catch {
+            iframe.removeAttribute("src");
+            iframe.srcdoc = errorPageSrcdoc(
+                url,
+                "DNS lookup failed. Check your connection."
+            );
+        }
+    };
+}
+
 // ---------------- RENDER TABS ----------------
 
 function renderTabs() {
@@ -117,8 +189,7 @@ function renderTabs() {
         const tabElement =
             document.createElement("div");
 
-        tabElement.className =
-            "browser-tab";
+        tabElement.className = "browser-tab";
 
         if (
             tab.id ===
@@ -200,8 +271,6 @@ async function navigate() {
 
     current.url = url;
 
-    const iframeSrc = getIframeSrc(url);
-
     if (!current.iframe) {
         const iframe =
             document.createElement("iframe");
@@ -216,11 +285,14 @@ async function navigate() {
     }
 
     if (url === "home.html") {
+        current.iframe.onerror = null;
         applyHomeTab(current.iframe);
     } else {
         current.iframe.removeAttribute("srcdoc");
-        current.iframe.src = iframeSrc;
+        attachFallback(current.iframe, url);
+        current.iframe.src = url;
     }
+
     current.iframe.hidden = false;
 
     tabs.forEach(tab => {
@@ -300,7 +372,8 @@ function restoreSession() {
         if (saved.url === "home.html") {
             applyHomeTab(iframe);
         } else {
-            iframe.src = getIframeSrc(saved.url);
+            attachFallback(iframe, saved.url);
+            iframe.src = saved.url;
         }
 
         tab.iframe = iframe;
