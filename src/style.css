@@ -26,7 +26,7 @@
 /* ===== SIDEBAR ===== */
 
 #sidebar {
-    width: 260px;
+    width: 150px;
     height: 100%;
     background: #151923;
     border-right: 1px solid #262c3d;
@@ -48,7 +48,7 @@
 #sidebarButtons {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 5px;
 }
 
 #newTabBtn,

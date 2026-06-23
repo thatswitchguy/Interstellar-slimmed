@@ -52,9 +52,16 @@ const HOME_SRCDOC = `<!DOCTYPE html>
     </style>
 </head>
 <body>
-    <h1>Interstellar Slimmed</h1>
-    <p>Enter a URL in the bar above to get started.</p>
-    <span class="hint">Press Z to leave &nbsp;&middot;&nbsp; Tab to focus iframe</span>
+    <h1>EclipseX</h1>
+    <p>
+    <p>
+    <p>
+    <p>
+    <p>Enter "https://better-eagler--alt-acc3.replit.app/" into URL bar</p>
+    <p>Turn render distance down and paricles to minimal</p>
+    <p>Press Z to leave &nbsp;&middot;&nbsp; Tab to focus iframe</p>
+    <p>by: thatswitchguy</p>
+    <p>New update on Thursday</p>
 </body>
 </html>`;
 
