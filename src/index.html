@@ -15,7 +15,7 @@
     <aside id="sidebar">
 
         <div id="logoContainer">
-            <h1 id="logoText">✦ Interstellar</h1>
+            <h1 id="logoText">Interstellar</h1>
         </div>
 
         <div id="sidebarButtons">
@@ -56,26 +56,6 @@
     </main>
 
 </div>
-
-<script>
-    /* ---- Starfield generator ---- */
-    const container = document.getElementById("stars");
-    const COUNT = 160;
-    for (let i = 0; i < COUNT; i++) {
-        const s = document.createElement("span");
-        const size = Math.random() * 2.2 + 0.4;
-        s.style.cssText = `
-            left:${Math.random()*100}%;
-            top:${Math.random()*100}%;
-            width:${size}px;
-            height:${size}px;
-            opacity:${Math.random()*0.6+0.1};
-            animation-duration:${Math.random()*4+2}s;
-            animation-delay:${Math.random()*5}s;
-        `;
-        container.appendChild(s);
-    }
-</script>
 
 <script type="module" src="renderer.js"></script>
 
