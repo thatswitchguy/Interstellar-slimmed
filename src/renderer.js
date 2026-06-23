@@ -35,26 +35,88 @@ const newTabBtn =
 const HOME_SRCDOC = `<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>New Tab</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            width: 100vw; height: 100vh;
-            background: #0f1117; color: white;
-            font-family: -apple-system, Inter, Arial, sans-serif;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center; gap: 24px;
-        }
-        h1 { font-size: 36px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.5px; }
-        p { font-size: 15px; color: #64748b; }
-        .hint { font-size: 13px; color: #334155; margin-top: 8px; }
-    </style>
+<meta charset="UTF-8">
+<title>New Tab</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+@keyframes twinkle{0%,100%{opacity:.15}50%{opacity:.9}}
+@keyframes drift{from{transform:translateY(0)}to{transform:translateY(-4px)}}
+body{
+  width:100vw;height:100vh;overflow:hidden;
+  background:radial-gradient(ellipse at 60% 0%,#0d0a2e 0%,#07091a 55%,#020409 100%);
+  color:#d4dbff;
+  font-family:-apple-system,"Inter","Segoe UI",Arial,sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;
+}
+#stars{position:fixed;inset:0;pointer-events:none;overflow:hidden;}
+#stars span{position:absolute;border-radius:50%;background:#fff;animation:twinkle linear infinite;}
+.logo{
+  font-size:42px;font-weight:900;letter-spacing:-1px;
+  background:linear-gradient(135deg,#a78bfa 0%,#60a5fa 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  animation:drift 3s ease-in-out infinite alternate;
+  user-select:none;
+}
+.sub{font-size:14px;color:#4b5682;letter-spacing:.5px;}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+  max-width:560px;
+  width:100%;
+  padding:0 20px;
+}
+.btn{
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  padding:16px 10px;
+  background:rgba(139,92,246,.07);
+  border:1px solid rgba(139,92,246,.18);
+  border-radius:14px;
+  cursor:pointer;
+  transition:all .18s ease;
+  color:#c4b5fd;
+  font-size:12px;font-weight:500;
+  user-select:none;
+}
+.btn:hover{
+  background:rgba(139,92,246,.22);
+  border-color:rgba(139,92,246,.5);
+  color:#ede9fe;
+  transform:translateY(-2px);
+  box-shadow:0 6px 24px rgba(139,92,246,.18);
+}
+.btn .ico{font-size:26px;line-height:1;}
+.hint{font-size:12px;color:#2a3050;margin-top:4px;}
+</style>
 </head>
 <body>
-    <h1>Interstellar Slimmed</h1>
-    <p>Enter a URL in the bar above to get started.</p>
-    <span class="hint">Press Z to leave &nbsp;&middot;&nbsp; Tab to focus iframe</span>
+<div id="stars"></div>
+<div class="logo">✦ Interstellar</div>
+<p class="sub">SELECT A DESTINATION</p>
+<div class="grid">
+  <div class="btn" onclick="go('https://youtube.com')"><span class="ico">▶️</span>YouTube</div>
+  <div class="btn" onclick="go('https://discord.com/app')"><span class="ico">💬</span>Discord</div>
+  <div class="btn" onclick="go('https://open.spotify.com')"><span class="ico">🎵</span>Spotify</div>
+  <div class="btn" onclick="go('https://reddit.com')"><span class="ico">🤖</span>Reddit</div>
+  <div class="btn" onclick="go('https://twitter.com')"><span class="ico">🐦</span>Twitter</div>
+  <div class="btn" onclick="go('https://github.com')"><span class="ico">🐙</span>GitHub</div>
+  <div class="btn" onclick="go('https://netflix.com')"><span class="ico">🎬</span>Netflix</div>
+  <div class="btn" onclick="go('https://google.com')"><span class="ico">🔍</span>Google</div>
+</div>
+<span class="hint">Press Z to leave &nbsp;·&nbsp; Tab to focus iframe</span>
+<script>
+  function go(url){
+    window.parent.postMessage({type:'interstellar-navigate',url:url},'*');
+  }
+  /* stars */
+  const c=document.getElementById('stars');
+  for(let i=0;i<120;i++){
+    const s=document.createElement('span');
+    const sz=Math.random()*2+0.3;
+    s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+(Math.random()*0.5+0.1)+';animation-duration:'+(Math.random()*4+2)+'s;animation-delay:'+(Math.random()*6)+'s;';
+    c.appendChild(s);
+  }
+<\/script>
 </body>
 </html>`;
 
@@ -392,6 +454,17 @@ function restoreSession() {
 }
 
 // ---------------- EVENTS ----------------
+
+window.addEventListener("message", (e) => {
+    if (
+        e.data &&
+        e.data.type === "interstellar-navigate" &&
+        typeof e.data.url === "string"
+    ) {
+        urlBar.value = e.data.url;
+        navigate();
+    }
+});
 
 goBtn.addEventListener("click", navigate);
 
