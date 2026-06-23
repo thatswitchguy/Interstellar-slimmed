@@ -30,6 +30,39 @@ const goBtn =
 const newTabBtn =
     document.getElementById("newTabBtn");
 
+// ---------------- NEW TAB PAGE ----------------
+
+const HOME_SRCDOC = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New Tab</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            width: 100vw; height: 100vh;
+            background: #0f1117; color: white;
+            font-family: -apple-system, Inter, Arial, sans-serif;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 24px;
+        }
+        h1 { font-size: 36px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.5px; }
+        p { font-size: 15px; color: #64748b; }
+        .hint { font-size: 13px; color: #334155; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Interstellar Slimmed</h1>
+    <p>Enter a URL in the bar above to get started.</p>
+    <span class="hint">Press Z to leave &nbsp;&middot;&nbsp; Tab to focus iframe</span>
+</body>
+</html>`;
+
+function applyHomeTab(iframe) {
+    iframe.removeAttribute("src");
+    iframe.srcdoc = HOME_SRCDOC;
+}
+
 // ---------------- HELPERS ----------------
 
 function parseInput(input) {
@@ -182,7 +215,12 @@ async function navigate() {
         tabViews.appendChild(iframe);
     }
 
-    current.iframe.src = iframeSrc;
+    if (url === "home.html") {
+        applyHomeTab(current.iframe);
+    } else {
+        current.iframe.removeAttribute("srcdoc");
+        current.iframe.src = iframeSrc;
+    }
     current.iframe.hidden = false;
 
     tabs.forEach(tab => {
@@ -222,9 +260,10 @@ function createNewTab() {
         document.createElement("iframe");
 
     iframe.className = "browser-frame";
-    iframe.src = "home.html";
     iframe.hidden = false;
     iframe.tabIndex = 0;
+
+    applyHomeTab(iframe);
 
     tab.iframe = iframe;
 
@@ -255,9 +294,14 @@ function restoreSession() {
             document.createElement("iframe");
 
         iframe.className = "browser-frame";
-        iframe.src = getIframeSrc(saved.url);
         iframe.hidden = true;
         iframe.tabIndex = 0;
+
+        if (saved.url === "home.html") {
+            applyHomeTab(iframe);
+        } else {
+            iframe.src = getIframeSrc(saved.url);
+        }
 
         tab.iframe = iframe;
 
