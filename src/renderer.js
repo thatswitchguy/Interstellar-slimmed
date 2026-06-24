@@ -90,7 +90,7 @@ const HOME_SRCDOC = `<!DOCTYPE html>
         <p>by: thatswitchguy &nbsp;&middot;&nbsp; New update on Thursday</p>
     </div>
     <div class="sites">
-        <a class="site-btn" href="#" data-url="https://better-eagler--alt-acc3.replit.app/">Eaglercraft</a>
+        <a class="site-btn" href="#" data-url="https://better-eagler--alt-acc3.replit.app/">Eaglercraft(spam click it and then click cancel on leave site)</a>
         <a class="site-btn" href="#" data-url="https://youtube.com">▶ YouTube</a>
         <a class="site-btn" href="#" data-url="https://discord.com/app">💬 Discord</a>
     </div>
