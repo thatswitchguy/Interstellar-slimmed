@@ -76,14 +76,50 @@ app.get("/proxy", async (req, res) => {
       let origin;
       try { origin = new URL(finalUrl).origin; } catch { origin = ""; }
 
+      // Inject base href so relative URLs resolve correctly
       if (origin && !html.includes("<base")) {
-        html = html.replace(
-          /(<head[^>]*>)/i,
-          `$1<base href="${origin}/">`
-        );
+        html = html.replace(/(<head[^>]*>)/i, `$1<base href="${origin}/">`);
         if (!html.includes("<base")) {
           html = `<base href="${origin}/">` + html;
         }
+      }
+
+      // Inject interceptor: routes cross-origin fetch/XHR/links through proxy
+      const interceptor = `<script>(function(){
+  var PROXY='/proxy?url=';
+  var myOrigin=window.location.origin;
+  function toProxied(u){
+    if(!u||typeof u!=='string')return null;
+    if(/^(data:|blob:|javascript:|#|mailto:)/i.test(u))return null;
+    var abs;try{abs=new URL(u,myOrigin).href}catch(e){return null}
+    if(!abs.startsWith('http'))return null;
+    if(abs.startsWith(myOrigin))return null;
+    return PROXY+encodeURIComponent(abs);
+  }
+  var oFetch=window.fetch;
+  window.fetch=function(input,init){
+    if(typeof input==='string'){var p=toProxied(input);if(p)input=p;}
+    else if(input&&input.url){var p=toProxied(input.url);if(p)input=new Request(p,input);}
+    return oFetch.call(this,input,init);
+  };
+  var oOpen=XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open=function(m,u){
+    var p=toProxied(String(u));
+    return oOpen.apply(this,[m,p||u].concat(Array.prototype.slice.call(arguments,2)));
+  };
+  document.addEventListener('click',function(e){
+    var a=e.target&&e.target.closest?e.target.closest('a[href]'):null;
+    if(!a)return;
+    var p=toProxied(a.getAttribute('href'));
+    if(p){e.preventDefault();window.location.href=p;}
+  },true);
+})()</script>`;
+
+      // Insert interceptor as first thing in <head> (before any other scripts)
+      if (html.includes("<head")) {
+        html = html.replace(/(<head[^>]*>)/i, `$1${interceptor}`);
+      } else {
+        html = interceptor + html;
       }
 
       res.setHeader("Content-Type", "text/html; charset=utf-8");

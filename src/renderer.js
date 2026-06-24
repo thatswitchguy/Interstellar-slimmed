@@ -247,37 +247,12 @@ function attachFallback(iframe, url) {
 
     // ── Shared helpers for non-bypass URLs ───────────────────────────────
 
-    async function fallbackToDNS() {
+    function showErrorInFrame(reason) {
         if (stage === "done") return;
         stage = "done";
         clearHandlers();
-
-        let hostname;
-        try { hostname = new URL(url).hostname; }
-        catch {
-            iframe.removeAttribute("src");
-            iframe.srcdoc = errorPageSrcdoc(url, "Invalid URL.");
-            return;
-        }
-
-        try {
-            const dns = await lookupDNS(hostname);
-            if (dns.addresses && dns.addresses.length > 0) {
-                window.open(url, "_blank", "noopener");
-            } else {
-                iframe.removeAttribute("src");
-                iframe.srcdoc = errorPageSrcdoc(
-                    url,
-                    `The domain <strong>${hostname}</strong> could not be resolved. The site may be down or misspelled.`
-                );
-            }
-        } catch {
-            iframe.removeAttribute("src");
-            iframe.srcdoc = errorPageSrcdoc(
-                url,
-                "DNS lookup failed. Check your connection."
-            );
-        }
+        iframe.removeAttribute("src");
+        iframe.srcdoc = errorPageSrcdoc(url, reason);
     }
 
     function switchToProxy() {
@@ -292,7 +267,7 @@ function attachFallback(iframe, url) {
             try {
                 const doc = iframe.contentDocument;
                 if (!doc || !doc.body || doc.body.innerHTML.trim() === "") {
-                    fallbackToDNS();
+                    showErrorInFrame("The proxy couldn't load this page. It may require login or block automated access.");
                 } else {
                     stage = "done";
                     iframe.onload = null;
@@ -306,8 +281,8 @@ function attachFallback(iframe, url) {
             }
         };
 
-        iframe.onerror = () => fallbackToDNS();
-        timer = setTimeout(fallbackToDNS, 10000);
+        iframe.onerror = () => showErrorInFrame("The proxy couldn't reach this site. It may be down or blocking access.");
+        timer = setTimeout(() => showErrorInFrame("The site took too long to respond through the proxy."), 15000);
 
         iframe.src = "/proxy?url=" + encodeURIComponent(url);
     }
