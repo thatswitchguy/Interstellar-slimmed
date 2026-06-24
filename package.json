@@ -2,12 +2,14 @@
   "name": "interstellar-browser",
   "version": "1.0.0",
   "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server.js",
-    "dns": "cd dns-server && cargo run"
+    "build": "echo 'No build step required'"
   },
   "dependencies": {
-    "express": "^4.21.2",
-    "node-fetch": "^3.3.2"
+    "express": "^4.21.2"
   }
 }

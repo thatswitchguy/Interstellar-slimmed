@@ -44,24 +44,57 @@ const HOME_SRCDOC = `<!DOCTYPE html>
             background: #0f1117; color: white;
             font-family: -apple-system, Inter, Arial, sans-serif;
             display: flex; flex-direction: column;
-            align-items: center; justify-content: center; gap: 24px;
+            align-items: center; justify-content: center; gap: 20px;
         }
-        h1 { font-size: 36px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.5px; }
-        p { font-size: 15px; color: #64748b; }
-        .hint { font-size: 13px; color: #334155; margin-top: 8px; }
+        h1 { font-size: 34px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.5px; }
+        .info { font-size: 13px; color: #475569; text-align: center; line-height: 1.7; }
+        .info p { margin: 0; }
+        .sites {
+            display: flex; flex-wrap: wrap; gap: 10px;
+            justify-content: center; max-width: 520px;
+        }
+        .site-btn {
+            padding: 9px 18px;
+            background: #1e2535;
+            border: 1px solid #2d3a52;
+            border-radius: 10px;
+            color: #cbd5e1;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            text-decoration: none;
+        }
+        .site-btn:hover { background: #2a3550; border-color: #3b82f6; color: white; }
+        .hint { font-size: 12px; color: #2d3a52; margin-top: 4px; }
     </style>
 </head>
 <body>
     <h1>EclipseX</h1>
-    <p>
-    <p>
-    <p>
-    <p>
-    <p>Enter "https://better-eagler--alt-acc3.replit.app/" into URL bar</p>
-    <p>Turn render distance down and paricles to minimal</p>
-    <p>Press Z to leave &nbsp;&middot;&nbsp; Tab to focus iframe</p>
-    <p>by: thatswitchguy</p>
-    <p>New update on Thursday</p>
+    <div class="info">
+        <p>Enter "https://better-eagler--alt-acc3.replit.app/" into URL bar</p>
+        <p>Turn render distance down and particles to minimal</p>
+        <p>by: thatswitchguy &nbsp;&middot;&nbsp; New update on Thursday</p>
+    </div>
+    <div class="sites">
+        <a class="site-btn" href="#" data-url="https://better-eagler--alt-acc3.replit.app/">🎮 EclipseX</a>
+        <a class="site-btn" href="#" data-url="https://youtube.com">▶ YouTube</a>
+        <a class="site-btn" href="#" data-url="https://discord.com/app">💬 Discord</a>
+        <a class="site-btn" href="#" data-url="https://classroom.google.com">📚 Classroom</a>
+        <a class="site-btn" href="#" data-url="https://docs.google.com">📄 Docs</a>
+        <a class="site-btn" href="#" data-url="https://github.com">🐙 GitHub</a>
+        <a class="site-btn" href="#" data-url="https://reddit.com">🔺 Reddit</a>
+        <a class="site-btn" href="#" data-url="https://spotify.com">🎵 Spotify</a>
+    </div>
+    <span class="hint">Press Z to leave &nbsp;&middot;&nbsp; Tab to focus iframe</span>
+    <script>
+        document.querySelectorAll('.site-btn').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.preventDefault();
+                const url = btn.getAttribute('data-url');
+                window.parent.postMessage({ type: 'navigate', url }, '*');
+            });
+        });
+    </script>
 </body>
 </html>`;
 
@@ -93,12 +126,11 @@ function errorPageSrcdoc(url, reason) {
       text-decoration: none; font-size: 14px; font-weight: 600;
     }
     a:hover { background: #2563eb; }
-    code { font-size: 12px; color: #475569; word-break: break-all; }
   </style>
 </head>
 <body>
   <h2>Can't reach this site</h2>
-  <p>DNS lookup failed for <strong>${url}</strong>.<br>${reason}</p>
+  <p>${reason}</p>
   <a href="${url}" target="_blank" rel="noopener">Open in new tab ↗</a>
 </body>
 </html>`;
@@ -138,23 +170,38 @@ function getActiveTab() {
 }
 
 // ---------------- FALLBACK CHAIN ----------------
-// Step 1: direct iframe load
-// Step 2 (on error): DNS lookup
-// Step 3a: DNS ok  → window.open in new tab
-// Step 3b: DNS fail → show error srcdoc
+//
+// Step 1: direct iframe (immediate)
+//   - onload fires + contentDocument accessible + empty → X-Frame-Options block → Step 2
+//   - onerror fires → network error → Step 2
+//   - 10 seconds pass with no successful load → Step 2
+//
+// Step 2: proxy via /proxy?url=... on same server
+//   - onload fires → done ✓
+//   - onerror or 10s timeout → Step 3
+//
+// Step 3: DNS lookup
+//   - DNS resolves → site exists, open in new tab
+//   - DNS fails → show error srcdoc
 
 function attachFallback(iframe, url) {
-    // Clear any previous error handler
-    iframe.onerror = null;
+    let stage = "direct"; // "direct" | "proxy" | "done"
+    let timer = null;
 
-    iframe.onerror = async () => {
-        // Prevent double-firing
+    function clearHandlers() {
+        clearTimeout(timer);
+        iframe.onload = null;
         iframe.onerror = null;
+    }
+
+    async function fallbackToDNS() {
+        if (stage === "done") return;
+        stage = "done";
+        clearHandlers();
 
         let hostname;
-        try {
-            hostname = new URL(url).hostname;
-        } catch {
+        try { hostname = new URL(url).hostname; }
+        catch {
             iframe.removeAttribute("src");
             iframe.srcdoc = errorPageSrcdoc(url, "Invalid URL.");
             return;
@@ -162,19 +209,13 @@ function attachFallback(iframe, url) {
 
         try {
             const dns = await lookupDNS(hostname);
-
-            const resolved =
-                dns.addresses && dns.addresses.length > 0;
-
-            if (resolved) {
-                // Site exists but iframe was blocked — open in new tab
+            if (dns.addresses && dns.addresses.length > 0) {
                 window.open(url, "_blank", "noopener");
             } else {
-                // DNS failed — show error page
                 iframe.removeAttribute("src");
                 iframe.srcdoc = errorPageSrcdoc(
                     url,
-                    "The domain could not be resolved. The site may be down or misspelled."
+                    `The domain <strong>${hostname}</strong> could not be resolved. The site may be down or misspelled.`
                 );
             }
         } catch {
@@ -184,7 +225,77 @@ function attachFallback(iframe, url) {
                 "DNS lookup failed. Check your connection."
             );
         }
+    }
+
+    function switchToProxy() {
+        if (stage !== "direct") return;
+        stage = "proxy";
+        clearHandlers();
+
+        iframe.removeAttribute("srcdoc");
+
+        // Proxy onload: check if it actually served content
+        iframe.onload = () => {
+            clearTimeout(timer);
+            try {
+                const doc = iframe.contentDocument;
+                if (!doc || !doc.body || doc.body.innerHTML.trim() === "") {
+                    fallbackToDNS();
+                } else {
+                    stage = "done";
+                    iframe.onload = null;
+                    iframe.onerror = null;
+                }
+            } catch {
+                // Cross-origin → real content loaded ✓
+                stage = "done";
+                iframe.onload = null;
+                iframe.onerror = null;
+            }
+        };
+
+        iframe.onerror = () => fallbackToDNS();
+
+        // 10s timeout on proxy too
+        timer = setTimeout(fallbackToDNS, 10000);
+
+        iframe.src = "/proxy?url=" + encodeURIComponent(url);
+    }
+
+    // Direct iframe load handler
+    iframe.onload = () => {
+        if (stage !== "direct") return;
+        clearTimeout(timer);
+
+        // Detect X-Frame-Options block: contentDocument accessible but empty
+        try {
+            const doc = iframe.contentDocument;
+            if (!doc || !doc.body || doc.body.innerHTML.trim() === "") {
+                switchToProxy();
+            } else {
+                // Loaded real content ✓
+                stage = "done";
+                iframe.onload = null;
+                iframe.onerror = null;
+            }
+        } catch {
+            // Cross-origin SecurityError → real page loaded ✓
+            stage = "done";
+            iframe.onload = null;
+            iframe.onerror = null;
+        }
     };
+
+    iframe.onerror = () => {
+        if (stage !== "direct") return;
+        clearTimeout(timer);
+        switchToProxy();
+    };
+
+    // 10-second timeout before proxy fallback
+    timer = setTimeout(() => {
+        if (stage === "direct") switchToProxy();
+    }, 10000);
 }
 
 // ---------------- RENDER TABS ----------------
@@ -270,13 +381,17 @@ function switchTab(id) {
 
 // ---------------- NAVIGATE ----------------
 
-async function navigate() {
+async function navigate(targetUrl) {
     const current = getCurrentTab();
     if (!current) return;
 
-    const url = parseInput(urlBar.value);
+    const url =
+        targetUrl
+            ? parseInput(targetUrl)
+            : parseInput(urlBar.value);
 
     current.url = url;
+    urlBar.value = url;
 
     if (!current.iframe) {
         const iframe =
@@ -293,6 +408,7 @@ async function navigate() {
 
     if (url === "home.html") {
         current.iframe.onerror = null;
+        current.iframe.onload = null;
         applyHomeTab(current.iframe);
     } else {
         current.iframe.removeAttribute("srcdoc");
@@ -398,9 +514,18 @@ function restoreSession() {
     renderTabs();
 }
 
+// ---------------- HOME TAB postMessage ----------------
+
+window.addEventListener("message", (e) => {
+    if (e.data && e.data.type === "navigate" && e.data.url) {
+        urlBar.value = e.data.url;
+        navigate(e.data.url);
+    }
+});
+
 // ---------------- EVENTS ----------------
 
-goBtn.addEventListener("click", navigate);
+goBtn.addEventListener("click", () => navigate());
 
 urlBar.addEventListener("keydown", e => {
     if (e.key === "Enter") {
