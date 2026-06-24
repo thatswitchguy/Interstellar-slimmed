@@ -84,21 +84,15 @@ const HOME_SRCDOC = `<!DOCTYPE html>
     </style>
 </head>
 <body>
-    <h1>EclipseX</h1>
+    <h1>EclipseR</h1>
     <div class="info">
-        <p>Enter "https://better-eagler--alt-acc3.replit.app/" into URL bar</p>
-        <p>Turn render distance down and particles to minimal</p>
+        <p>Turn render distance down and particles to minimal (eaglercraft)</p>
         <p>by: thatswitchguy &nbsp;&middot;&nbsp; New update on Thursday</p>
     </div>
     <div class="sites">
-        <a class="site-btn" href="#" data-url="https://better-eagler--alt-acc3.replit.app/">🎮 EclipseX</a>
+        <a class="site-btn" href="#" data-url="https://better-eagler--alt-acc3.replit.app/">Eaglercraft</a>
         <a class="site-btn" href="#" data-url="https://youtube.com">▶ YouTube</a>
         <a class="site-btn" href="#" data-url="https://discord.com/app">💬 Discord</a>
-        <a class="site-btn" href="#" data-url="https://classroom.google.com">📚 Classroom</a>
-        <a class="site-btn" href="#" data-url="https://docs.google.com">📄 Docs</a>
-        <a class="site-btn" href="#" data-url="https://github.com">🐙 GitHub</a>
-        <a class="site-btn" href="#" data-url="https://reddit.com">🔺 Reddit</a>
-        <a class="site-btn" href="#" data-url="https://spotify.com">🎵 Spotify</a>
     </div>
     <span class="hint">Press Z to leave &nbsp;&middot;&nbsp; Tab to focus iframe</span>
     <script>
