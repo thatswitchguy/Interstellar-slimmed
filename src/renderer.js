@@ -30,6 +30,21 @@ const goBtn =
 const newTabBtn =
     document.getElementById("newTabBtn");
 
+const sidebarToggle =
+    document.getElementById("sidebarToggle");
+
+const sidebar =
+    document.getElementById("sidebar");
+
+// ---------------- SIDEBAR TOGGLE ----------------
+
+let sidebarCollapsed = false;
+
+sidebarToggle.addEventListener("click", () => {
+    sidebarCollapsed = !sidebarCollapsed;
+    sidebar.classList.toggle("collapsed", sidebarCollapsed);
+});
+
 // ---------------- NEW TAB PAGE ----------------
 
 const HOME_SRCDOC = `<!DOCTYPE html>
@@ -138,6 +153,17 @@ function errorPageSrcdoc(url, reason) {
 
 // ---------------- HELPERS ----------------
 
+// URLs that should never go through the proxy — load direct only
+const PROXY_BYPASS = [
+    "https://better-eagler--alt-acc3.replit.app/"
+];
+
+function shouldBypassProxy(url) {
+    return PROXY_BYPASS.some(bypass =>
+        url === bypass || url.startsWith(bypass)
+    );
+}
+
 function parseInput(input) {
     input = input.trim();
 
@@ -172,20 +198,22 @@ function getActiveTab() {
 // ---------------- FALLBACK CHAIN ----------------
 //
 // Step 1: direct iframe (immediate)
-//   - onload fires + contentDocument accessible + empty → X-Frame-Options block → Step 2
-//   - onerror fires → network error → Step 2
-//   - 10 seconds pass with no successful load → Step 2
+//   - onload fires + contentDocument accessible + empty → proxy block → Step 2
+//   - onerror fires → network fail → Step 2
+//   - 10 seconds pass → Step 2
+//   (if URL is in PROXY_BYPASS, skip Step 2 and go straight to Step 3)
 //
-// Step 2: proxy via /proxy?url=... on same server
-//   - onload fires → done ✓
+// Step 2: proxy via /proxy?url=...
+//   - onload fires with real content → done ✓
 //   - onerror or 10s timeout → Step 3
 //
 // Step 3: DNS lookup
-//   - DNS resolves → site exists, open in new tab
-//   - DNS fails → show error srcdoc
+//   - resolves → window.open in new tab
+//   - fails    → show error srcdoc
 
 function attachFallback(iframe, url) {
-    let stage = "direct"; // "direct" | "proxy" | "done"
+    const bypass = shouldBypassProxy(url);
+    let stage = "direct";
     let timer = null;
 
     function clearHandlers() {
@@ -229,12 +257,18 @@ function attachFallback(iframe, url) {
 
     function switchToProxy() {
         if (stage !== "direct") return;
+
+        // If this URL is in the bypass list, skip proxy entirely
+        if (bypass) {
+            fallbackToDNS();
+            return;
+        }
+
         stage = "proxy";
         clearHandlers();
 
         iframe.removeAttribute("srcdoc");
 
-        // Proxy onload: check if it actually served content
         iframe.onload = () => {
             clearTimeout(timer);
             try {
@@ -247,7 +281,6 @@ function attachFallback(iframe, url) {
                     iframe.onerror = null;
                 }
             } catch {
-                // Cross-origin → real content loaded ✓
                 stage = "done";
                 iframe.onload = null;
                 iframe.onerror = null;
@@ -255,25 +288,21 @@ function attachFallback(iframe, url) {
         };
 
         iframe.onerror = () => fallbackToDNS();
-
-        // 10s timeout on proxy too
         timer = setTimeout(fallbackToDNS, 10000);
 
         iframe.src = "/proxy?url=" + encodeURIComponent(url);
     }
 
-    // Direct iframe load handler
+    // Direct iframe handlers
     iframe.onload = () => {
         if (stage !== "direct") return;
         clearTimeout(timer);
 
-        // Detect X-Frame-Options block: contentDocument accessible but empty
         try {
             const doc = iframe.contentDocument;
             if (!doc || !doc.body || doc.body.innerHTML.trim() === "") {
                 switchToProxy();
             } else {
-                // Loaded real content ✓
                 stage = "done";
                 iframe.onload = null;
                 iframe.onerror = null;
@@ -292,7 +321,6 @@ function attachFallback(iframe, url) {
         switchToProxy();
     };
 
-    // 10-second timeout before proxy fallback
     timer = setTimeout(() => {
         if (stage === "direct") switchToProxy();
     }, 10000);
@@ -330,13 +358,10 @@ function renderTabs() {
 
         close.onclick = e => {
             e.stopPropagation();
-
             deleteTab(tab.id);
-
             if (tabs.length > 0) {
                 switchTab(tabs[0].id);
             }
-
             renderTabs();
         };
 
@@ -358,7 +383,6 @@ function switchTab(id) {
 
     tabs.forEach(tab => {
         if (!tab.iframe) return;
-
         tab.iframe.hidden = tab.id !== id;
     });
 
@@ -371,9 +395,7 @@ function switchTab(id) {
 
     setTimeout(() => {
         const t = getActiveTab();
-        if (t?.iframe) {
-            t.iframe.focus();
-        }
+        if (t?.iframe) t.iframe.focus();
     }, 50);
 
     renderTabs();
@@ -402,7 +424,6 @@ async function navigate(targetUrl) {
         iframe.hidden = false;
 
         current.iframe = iframe;
-
         tabViews.appendChild(iframe);
     }
 
@@ -419,10 +440,7 @@ async function navigate(targetUrl) {
     current.iframe.hidden = false;
 
     tabs.forEach(tab => {
-        if (
-            tab.id !== current.id &&
-            tab.iframe
-        ) {
+        if (tab.id !== current.id && tab.iframe) {
             tab.iframe.hidden = true;
         }
     });
@@ -431,8 +449,7 @@ async function navigate(targetUrl) {
         current.title = "New Tab";
     } else {
         try {
-            current.title =
-                new URL(url).hostname;
+            current.title = new URL(url).hostname;
         } catch {
             current.title = url;
         }
@@ -461,11 +478,9 @@ function createNewTab() {
     applyHomeTab(iframe);
 
     tab.iframe = iframe;
-
     tabViews.appendChild(iframe);
 
     switchTab(tab.id);
-
     renderTabs();
 }
 
@@ -481,7 +496,6 @@ function restoreSession() {
 
     stored.forEach(saved => {
         const tab = createTab(saved.url);
-
         tab.title = saved.title;
         tab.dns = saved.dns;
 
@@ -500,14 +514,13 @@ function restoreSession() {
         }
 
         tab.iframe = iframe;
-
         tabViews.appendChild(iframe);
     });
 
     switchTab(tabs[0].id);
 
     const first = tabs[0];
-    if (first && first.iframe) {
+    if (first?.iframe) {
         first.iframe.hidden = false;
     }
 
@@ -517,7 +530,7 @@ function restoreSession() {
 // ---------------- HOME TAB postMessage ----------------
 
 window.addEventListener("message", (e) => {
-    if (e.data && e.data.type === "navigate" && e.data.url) {
+    if (e.data?.type === "navigate" && e.data.url) {
         urlBar.value = e.data.url;
         navigate(e.data.url);
     }
@@ -528,9 +541,7 @@ window.addEventListener("message", (e) => {
 goBtn.addEventListener("click", () => navigate());
 
 urlBar.addEventListener("keydown", e => {
-    if (e.key === "Enter") {
-        navigate();
-    }
+    if (e.key === "Enter") navigate();
 });
 
 newTabBtn.addEventListener("click", createNewTab);
@@ -542,28 +553,19 @@ document.addEventListener("DOMContentLoaded", restoreSession);
 document.addEventListener("keydown", (e) => {
     if (
         e.key === "z" &&
-        !e.ctrlKey &&
-        !e.altKey &&
-        !e.metaKey &&
+        !e.ctrlKey && !e.altKey && !e.metaKey &&
         document.activeElement !== urlBar
     ) {
-        window.location.href =
-            "https://classroom.google.com";
+        window.location.href = "https://classroom.google.com";
         return;
     }
 
     if (e.key === "Tab") {
         e.preventDefault();
-
         const t = getActiveTab();
         if (!t?.iframe) return;
-
         t.iframe.focus();
-
         t.iframe.style.outline = "2px solid #4af";
-
-        setTimeout(() => {
-            t.iframe.style.outline = "none";
-        }, 400);
+        setTimeout(() => { t.iframe.style.outline = "none"; }, 400);
     }
 });

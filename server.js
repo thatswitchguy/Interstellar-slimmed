@@ -6,22 +6,14 @@ app.use(express.static("src"));
 
 app.get("/api/dns", async (req, res) => {
   const host = req.query.host;
-
   try {
     const response = await fetch(
       `http://localhost:8081/lookup?host=${encodeURIComponent(host)}`
     );
-
     const data = await response.json();
-
     res.json(data);
-
   } catch (err) {
-
-    res.status(500).json({
-      error: String(err)
-    });
-
+    res.status(500).json({ error: String(err) });
   }
 });
 
@@ -38,10 +30,16 @@ app.get("/proxy", async (req, res) => {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
           "AppleWebKit/537.36 (KHTML, like Gecko) " +
-          "Chrome/124.0 Safari/537.36",
+          "Chrome/125.0.0.0 Safari/537.36",
         "Accept":
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5"
+          "text/html,application/xhtml+xml,application/xml;q=0.9," +
+          "image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Upgrade-Insecure-Requests": "1",
+        "Connection": "keep-alive"
       },
       redirect: "follow"
     });
@@ -50,7 +48,10 @@ app.get("/proxy", async (req, res) => {
       "x-frame-options",
       "content-security-policy",
       "content-security-policy-report-only",
-      "x-content-type-options"
+      "x-content-type-options",
+      "strict-transport-security",
+      "transfer-encoding",
+      "content-encoding"
     ]);
 
     upstream.headers.forEach((value, key) => {
@@ -65,9 +66,10 @@ app.get("/proxy", async (req, res) => {
       let html = await upstream.text();
 
       const finalUrl = upstream.url || url;
-      const origin = new URL(finalUrl).origin;
+      let origin;
+      try { origin = new URL(finalUrl).origin; } catch { origin = ""; }
 
-      if (!html.includes("<base")) {
+      if (origin && !html.includes("<base")) {
         html = html.replace(
           /(<head[^>]*>)/i,
           `$1<base href="${origin}/">`
@@ -102,15 +104,9 @@ app.get("/proxy", async (req, res) => {
     h2 { font-size: 22px; font-weight: 700; color: #e2e8f0; }
     p  { font-size: 14px; color: #64748b; max-width: 420px; text-align: center; }
     a  {
-      display: inline-block;
-      margin-top: 6px;
-      padding: 11px 22px;
-      background: #3b82f6;
-      color: white;
-      border-radius: 10px;
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 600;
+      display: inline-block; margin-top: 6px; padding: 11px 22px;
+      background: #3b82f6; color: white; border-radius: 10px;
+      text-decoration: none; font-size: 14px; font-weight: 600;
     }
     a:hover { background: #2563eb; }
     code { font-size: 12px; color: #475569; word-break: break-all; }
