@@ -39,7 +39,14 @@ app.get("/proxy", async (req, res) => {
         "Cache-Control": "no-cache",
         "Pragma": "no-cache",
         "Upgrade-Insecure-Requests": "1",
-        "Connection": "keep-alive"
+        "Connection": "keep-alive",
+        "Sec-CH-UA": '"Brave";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
+        "Sec-CH-UA-Mobile": "?0",
+        "Sec-CH-UA-Platform": '"Windows"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1"
       },
       redirect: "follow"
     });
