@@ -147,15 +147,28 @@ function errorPageSrcdoc(url, reason) {
 
 // ---------------- HELPERS ----------------
 
-// URLs that should never go through the proxy — load direct only
+// Load direct only — never proxy, never error page, never new-tab
 const PROXY_BYPASS = [
     "https://better-eagler--alt-acc3.replit.app/"
+];
+
+// Skip direct attempt — go straight to proxy (always block embedding)
+const FORCE_PROXY_DOMAINS = [
+    "discord.com",
+    "youtube.com"
 ];
 
 function shouldBypassProxy(url) {
     return PROXY_BYPASS.some(bypass =>
         url === bypass || url.startsWith(bypass)
     );
+}
+
+function shouldForceProxy(url) {
+    try {
+        const hostname = new URL(url).hostname.replace(/^www\./, "");
+        return FORCE_PROXY_DOMAINS.includes(hostname);
+    } catch { return false; }
 }
 
 function parseInput(input) {
@@ -191,22 +204,14 @@ function getActiveTab() {
 
 // ---------------- FALLBACK CHAIN ----------------
 //
-// Step 1: direct iframe (immediate)
-//   - onload fires + contentDocument accessible + empty → proxy block → Step 2
-//   - onerror fires → network fail → Step 2
-//   - 10 seconds pass → Step 2
-//   (if URL is in PROXY_BYPASS, skip Step 2 and go straight to Step 3)
-//
-// Step 2: proxy via /proxy?url=...
-//   - onload fires with real content → done ✓
-//   - onerror or 10s timeout → Step 3
-//
-// Step 3: DNS lookup
-//   - resolves → window.open in new tab
-//   - fails    → show error srcdoc
+// BYPASS urls (EclipseX): direct only. onload → done. onerror → silent.
+// FORCE_PROXY urls (Discord, YouTube): skip direct, go straight to proxy.
+// Everything else:
+//   Step 1 direct → Step 2 proxy → Step 3 DNS (open new tab or error page)
 
 function attachFallback(iframe, url) {
     const bypass = shouldBypassProxy(url);
+    const forceProxy = shouldForceProxy(url);
     let stage = "direct";
     let timer = null;
 
@@ -215,6 +220,32 @@ function attachFallback(iframe, url) {
         iframe.onload = null;
         iframe.onerror = null;
     }
+
+    // ── BYPASS: direct-only, never error out ──────────────────────────────
+    if (bypass) {
+        iframe.onload = () => {
+            clearTimeout(timer);
+            stage = "done";
+            iframe.onload = null;
+            iframe.onerror = null;
+        };
+        iframe.onerror = () => {
+            // Silently absorb failures — no error page, no DNS, no new tab
+            clearTimeout(timer);
+            stage = "done";
+            iframe.onload = null;
+            iframe.onerror = null;
+        };
+        // Long timeout — game can take a while; after 30s just stop watching
+        timer = setTimeout(() => {
+            stage = "done";
+            iframe.onload = null;
+            iframe.onerror = null;
+        }, 30000);
+        return;
+    }
+
+    // ── Shared helpers for non-bypass URLs ───────────────────────────────
 
     async function fallbackToDNS() {
         if (stage === "done") return;
@@ -251,13 +282,6 @@ function attachFallback(iframe, url) {
 
     function switchToProxy() {
         if (stage !== "direct") return;
-
-        // If this URL is in the bypass list, skip proxy entirely
-        if (bypass) {
-            fallbackToDNS();
-            return;
-        }
-
         stage = "proxy";
         clearHandlers();
 
@@ -275,6 +299,7 @@ function attachFallback(iframe, url) {
                     iframe.onerror = null;
                 }
             } catch {
+                // Cross-origin → real content loaded ✓
                 stage = "done";
                 iframe.onload = null;
                 iframe.onerror = null;
@@ -287,7 +312,13 @@ function attachFallback(iframe, url) {
         iframe.src = "/proxy?url=" + encodeURIComponent(url);
     }
 
-    // Direct iframe handlers
+    // ── FORCE PROXY: skip direct, load via proxy immediately ─────────────
+    if (forceProxy) {
+        switchToProxy();
+        return;
+    }
+
+    // ── NORMAL: direct → proxy → DNS ─────────────────────────────────────
     iframe.onload = () => {
         if (stage !== "direct") return;
         clearTimeout(timer);
